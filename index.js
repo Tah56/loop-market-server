@@ -68,7 +68,18 @@ async function run() {
       const { id } = req.params;
       const data = req.body;
       console.log(data);
-      
+      if(data.stauts==="Approved"){
+
+        const result = await productsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set:{ status: data.status }},
+        );
+      }else if(data.status==="Rejected"){
+        const result = await productsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set:{ status: data.status }},
+        );
+      }
       const result = await productsCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: data },
