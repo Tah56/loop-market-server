@@ -46,11 +46,23 @@ async function run() {
 
     app.get("/api/products/:id", async (req, res) => {
       const { id } = req.params;
+     
+      
       const result = await productsCollection.findOne({
         _id: new ObjectId(id),
       });
       res.send(result);
     });
+
+    app.get("/api/myproduct/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await productsCollection.find({
+        "seller.id" : id
+      }).toArray();
+      res.send(result);
+    });
+
+    
 
     app.patch("/api/products/:id", async (req, res) => {
       const { id } = req.params;
