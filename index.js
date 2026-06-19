@@ -39,15 +39,13 @@ async function run() {
     });
 
     app.get("/api/products", async (req, res) => {
-      
       const result = await productsCollection.find().toArray();
       res.send(result);
     });
 
     app.get("/api/products/:id", async (req, res) => {
       const { id } = req.params;
-     
-      
+
       const result = await productsCollection.findOne({
         _id: new ObjectId(id),
       });
@@ -56,35 +54,42 @@ async function run() {
 
     app.get("/api/myproduct/:id", async (req, res) => {
       const { id } = req.params;
-      const result = await productsCollection.find({
-        "seller.id" : id
-      }).toArray();
+      const result = await productsCollection
+        .find({
+          "seller.id": id,
+        })
+        .toArray();
       res.send(result);
     });
-
-    
 
     app.patch("/api/products/:id", async (req, res) => {
       const { id } = req.params;
       const data = req.body;
       console.log(data);
-      if(data.stauts==="Approved"){
-
+      if (data.stauts === "Approved") {
         const result = await productsCollection.updateOne(
           { _id: new ObjectId(id) },
-          { $set:{ status: data.status }},
+          { $set: { status: data.status } },
         );
-      }else if(data.status==="Rejected"){
+      } else if (data.status === "Rejected") {
         const result = await productsCollection.updateOne(
           { _id: new ObjectId(id) },
-          { $set:{ status: data.status }},
+          { $set: { status: data.status } },
         );
       }
       const result = await productsCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: data },
       );
-      res.send(result)
+      res.send(result);
+    });
+
+    app.delete("/api/products/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await productsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
