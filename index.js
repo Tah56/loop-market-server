@@ -31,6 +31,13 @@ async function run() {
 
     const database = client.db("loopMarket");
     const productsCollection = database.collection("products");
+    const users = database.collection("user")
+
+
+    app.get("/api/users",async(req,res)=>{
+      const result = await users.find().toArray();
+      res.send(result)
+    })
 
     app.post("/api/products", async (req, res) => {
       const products = req.body;
