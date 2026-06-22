@@ -31,13 +31,12 @@ async function run() {
 
     const database = client.db("loopMarket");
     const productsCollection = database.collection("products");
-    const users = database.collection("user")
+    const users = database.collection("user");
 
-
-    app.get("/api/users",async(req,res)=>{
+    app.get("/api/users", async (req, res) => {
       const result = await users.find().toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     app.post("/api/products", async (req, res) => {
       const products = req.body;
@@ -84,6 +83,29 @@ async function run() {
           { $set: { status: data.status } },
         );
       }
+      if (data.status === "block") {
+        const result = await users.updateOne(
+          {
+            _id: new ObjectId(id),
+          },
+          { $set: { status: data.status } },
+        )
+        
+        res.send(result)
+        return
+  
+      }else if (data.status ==="active"){
+          const result = await users.updateOne(
+          {
+            _id: new ObjectId(id),
+          },
+          { $set: { status: data.status } },
+        )
+         res.send(result)
+        return
+  
+        };
+        
       const result = await productsCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: data },
