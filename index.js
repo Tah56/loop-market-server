@@ -32,32 +32,32 @@ async function run() {
     const database = client.db("loopMarket");
     const productsCollection = database.collection("products");
     const users = database.collection("user");
-    const paymentsCollection = database.collection("payments")
-    const ordersCollection = database.collection("orders")
+    const paymentsCollection = database.collection("payments");
+    const ordersCollection = database.collection("orders");
 
     app.get("/api/users", async (req, res) => {
       const result = await users.find().toArray();
       res.send(result);
     });
     app.get("/api/users/:id", async (req, res) => {
-      const {id} = req.params
-      const result = await users.findOne({email:id});
+      const { id } = req.params;
+      const result = await users.findOne({ email: id });
       res.send(result);
     });
 
-    app.post("/api/payments",async (req,res)=>{
+    app.post("/api/payments", async (req, res) => {
       const payments = req.body;
-      const result = await paymentsCollection.insertOne(payments)
-      res.send(result)
-    })
-    
-    app.delete('/api/payments/:id', async (req,res)=>{
-      const {id} = req.params;
+      const result = await paymentsCollection.insertOne(payments);
+      res.send(result);
+    });
+
+    app.delete("/api/payments/:id", async (req, res) => {
+      const { id } = req.params;
       const result = ordersCollection.deleteOne({
-        productId:id
-      })
-      res.send(result)
-    })
+        orderId: id,
+      });
+      res.send(result);
+    });
 
     app.post("/api/products", async (req, res) => {
       const products = req.body;
@@ -67,6 +67,35 @@ async function run() {
 
     app.get("/api/products", async (req, res) => {
       const result = await productsCollection.find().toArray();
+      res.send(result);
+    });
+    app.get("/api/sellers", async (req, res) => {
+     
+
+      const result = await ordersCollection.find().toArray();
+      res.send(result);
+    });
+    app.get("/api/seller/:id", async (req, res) => {
+      const { id } = req.params;
+
+      const result = await ordersCollection
+        .find({
+          sellerEmail: id,
+        })
+        .toArray();
+      res.send(result);
+    });
+    app.patch("/api/seller/:id", async (req, res) => {
+      const { id } = req.params;
+      const { orderStatus } = req.body;
+
+      const result = await ordersCollection.updateOne(
+        {
+          orderId: id,
+        },
+        { $set: { orderStatus: orderStatus } },
+      );
+
       res.send(result);
     });
 
@@ -110,23 +139,21 @@ async function run() {
             _id: new ObjectId(id),
           },
           { $set: { status: data.status } },
-        )
-        
-        res.send(result)
-        return
-  
-      }else if (data.status ==="active"){
-          const result = await users.updateOne(
+        );
+
+        res.send(result);
+        return;
+      } else if (data.status === "active") {
+        const result = await users.updateOne(
           {
             _id: new ObjectId(id),
           },
           { $set: { status: data.status } },
-        )
-         res.send(result)
-        return
-  
-        };
-        
+        );
+        res.send(result);
+        return;
+      }
+
       const result = await productsCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: data },
@@ -134,25 +161,25 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/api/orders/:buyerEmail', async (req,res)=>{
-            const { buyerEmail } = req.params;
+    app.get("/api/orders/:buyerEmail", async (req, res) => {
+      const { buyerEmail } = req.params;
 
-     
-      const result = await ordersCollection.find({
+      const result = await ordersCollection
+        .find({
           "buyerInfo.email": buyerEmail,
         })
-        .toArray();;
-      res.send(result)
-    })
-    app.post('/api/orders', async (req,res)=>{
+        .toArray();
+      res.send(result);
+    });
+    app.post("/api/orders", async (req, res) => {
       const data = req.body;
-      const orders ={
+      const orders = {
         ...data,
-        createdAt: new Date()
-      }
+        createdAt: new Date(),
+      };
       const result = await ordersCollection.insertOne(orders);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     app.delete("/api/products/:id", async (req, res) => {
       const { id } = req.params;
