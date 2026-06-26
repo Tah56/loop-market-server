@@ -66,7 +66,21 @@ async function run() {
     });
 
     app.get("/api/products", async (req, res) => {
-      const result = await productsCollection.find().toArray();
+console.log("sss",req.query);
+      const query ={}
+      if(req.query.category){
+        query.category = req.query.category
+      }
+      if(req.query.condition){
+        query.condition = req.query.condition
+      }
+      if(req.query.search){
+        query.$or=[
+          {title:{$regex: req.query.search, $options:"i"}}
+        ]
+        
+      }
+      const result = await productsCollection.find(query).toArray();
       res.send(result);
     });
     app.get("/api/sellers", async (req, res) => {
@@ -75,6 +89,25 @@ async function run() {
       const result = await ordersCollection.find().toArray();
       res.send(result);
     });
+    app.get("/api/users/:id",async(req,res)=>{
+      const {id}=req.params;
+      const result = await users.findOne({
+        email:id
+      })
+      res.send(result)
+    })
+    app.patch("/api/users/:id",async(req,res)=>{
+      const {id}=req.params;
+      const {image}= req.body
+      const result = await users.updateOne({
+        email:id
+      },
+      {
+        $set:{image:image}
+      }
+    )
+      res.send(result)
+    })
     app.get("/api/seller/:id", async (req, res) => {
       const { id } = req.params;
 
@@ -104,6 +137,7 @@ async function run() {
 
       const result = await productsCollection.findOne({
         _id: new ObjectId(id),
+       
       });
       res.send(result);
     });
