@@ -66,48 +66,44 @@ async function run() {
     });
 
     app.get("/api/products", async (req, res) => {
-console.log("sss",req.query);
-      const query ={}
-      if(req.query.category){
-        query.category = req.query.category
+      console.log("sss", req.query);
+      const query = {};
+      if (req.query.category) {
+        query.category = req.query.category;
       }
-      if(req.query.condition){
-        query.condition = req.query.condition
+      if (req.query.condition) {
+        query.condition = req.query.condition;
       }
-      if(req.query.search){
-        query.$or=[
-          {title:{$regex: req.query.search, $options:"i"}}
-        ]
-        
+      if (req.query.search) {
+        query.$or = [{ title: { $regex: req.query.search, $options: "i" } }];
       }
       const result = await productsCollection.find(query).toArray();
       res.send(result);
     });
     app.get("/api/sellers", async (req, res) => {
-     
-
       const result = await ordersCollection.find().toArray();
       res.send(result);
     });
-    app.get("/api/users/:id",async(req,res)=>{
-      const {id}=req.params;
+    app.get("/api/users/:id", async (req, res) => {
+      const { id } = req.params;
       const result = await users.findOne({
-        email:id
-      })
-      res.send(result)
-    })
-    app.patch("/api/users/:id",async(req,res)=>{
-      const {id}=req.params;
-      const {image}= req.body
-      const result = await users.updateOne({
-        email:id
-      },
-      {
-        $set:{image:image}
-      }
-    )
-      res.send(result)
-    })
+        email: id,
+      });
+      res.send(result);
+    });
+    app.patch("/api/users/:id", async (req, res) => {
+      const { id } = req.params;
+      const { image } = req.body;
+      const result = await users.updateOne(
+        {
+          email: id,
+        },
+        {
+          $set: { image: image },
+        },
+      );
+      res.send(result);
+    });
     app.get("/api/seller/:id", async (req, res) => {
       const { id } = req.params;
 
@@ -137,9 +133,43 @@ console.log("sss",req.query);
 
       const result = await productsCollection.findOne({
         _id: new ObjectId(id),
-       
       });
       res.send(result);
+    });
+
+    app.get("/api/overview", async (req, res) => {
+      const query = {};
+
+      if (req.query.email) {
+        query.email = req.query.email;
+      }
+
+      const totalOrders = await ordersCollection.countDocuments({
+        "buyerInfo.email": query.email,
+      });
+
+      const active = await ordersCollection.countDocuments({
+        "buyerInfo.email": query.email,
+        orderStatus: { $ne: "Delivered" },
+      });
+
+      const payments = await paymentsCollection
+        .find({
+          buyerEmail: query.email,
+          paymentStatus: "Paid",
+        })
+        .toArray();
+
+      const totalSpent = payments.reduce(
+        (sum, payment) => sum + Number(payment.amount || 0),
+        0,
+      );
+
+      res.send({
+        totalOrders,
+        totalSpent,
+        active,
+      });
     });
 
     app.get("/api/myproduct/:id", async (req, res) => {
@@ -168,14 +198,22 @@ console.log("sss",req.query);
         );
       }
       if (data.status === "block") {
-        const result = await users.updateOne(
+        const q = await users.updateOne(
           {
             _id: new ObjectId(id),
           },
           { $set: { status: data.status } },
         );
+        const r = await productsCollection.updateMany(
+          {
+            "seller.id": id,
+          },
+          { $set: { status: "Rejected" } },
+        );
+        const result = { r,q  };
+        console.log(result);
 
-        res.send(result);
+        res.send({r,q});
         return;
       } else if (data.status === "active") {
         const result = await users.updateOne(
@@ -184,7 +222,14 @@ console.log("sss",req.query);
           },
           { $set: { status: data.status } },
         );
-        res.send(result);
+
+        const r = await productsCollection.updateMany(
+          {
+            "seller.id": id,
+          },
+          { $set: { status: "Approved" } },
+        );
+        res.send({result,r});
         return;
       }
 
