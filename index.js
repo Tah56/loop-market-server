@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 const cors = require("cors");
 require("dotenv").config();
 
@@ -32,7 +32,7 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
 
-    await client.connect();
+    // await client.connect();
 
     const database = client.db("loopMarket");
     const productsCollection = database.collection("products");
@@ -55,38 +55,36 @@ async function run() {
       const query = { token: token };
 
       const session = await sessionCollection.findOne(query);
-      
+
       const userId = session.userId;
-      
+
       const userQuery = { _id: userId };
       const user = await users.findOne(userQuery);
       console.log(user);
-req.user= user;
+      req.user = user;
       next();
     };
 
+    const verifyBuyer = async (req, res, next) => {
+      if (req.user?.role !== "buyer") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
 
-const verifyBuyer = async(req,res,next)=>{
-  if(req.user?.role !=="buyer"){
-    return res .status(403).send({message:"forbidden access"})
-  }
-  next()
-}
+    const verifyAdmin = async (req, res, next) => {
+      if (req.user?.role !== "admin") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
 
-
-const verifyAdmin = async(req,res,next)  =>{
-  if(req.user?.role !=="admin"){
-    return res.status(403).send({message:"forbidden access"})
-  }
-  next()
-}
-
-const verifySeller = async(req,res,next)  =>{
-  if(req.user?.role !=="seller"){
-    return res.status(403).send({message:"forbidden access"})
-  }
-  next()
-}
+    const verifySeller = async (req, res, next) => {
+      if (req.user?.role !== "seller") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
 
     app.get("/api/users", verifyToken, async (req, res) => {
       const result = await users.find().toArray();
@@ -125,7 +123,7 @@ const verifySeller = async(req,res,next)  =>{
       res.send(result);
     });
 
-    app.post("/api/products",verifyToken,verifySeller, async (req, res) => {
+    app.post("/api/products", async (req, res) => {
       const products = req.body;
       const result = await productsCollection.insertOne(products);
       res.send(result);
@@ -134,6 +132,7 @@ const verifySeller = async(req,res,next)  =>{
     app.get("/api/products", async (req, res) => {
       console.log("sss", req.query);
       const query = {};
+
       if (req.query.category) {
         query.category = req.query.category;
       }
@@ -143,10 +142,23 @@ const verifySeller = async(req,res,next)  =>{
       if (req.query.search) {
         query.$or = [{ title: { $regex: req.query.search, $options: "i" } }];
       }
+      if (req.query.page) { 
+        const perPage = req.query.perPage || 12;
+        const page = req.query.page;
+        const skipItem = (page - 1) * perPage;
+        const cursor = productsCollection
+          .find(query)
+          .skip(skipItem)
+          .limit(perPage);
+        const total = await productsCollection.countDocuments(query)
+          const result = await cursor.toArray();
+        return res.send({result,total});
+      }
+
       const result = await productsCollection.find(query).toArray();
       res.send(result);
     });
-    app.get("/api/sellers",verifyToken, async (req, res) => {
+    app.get("/api/sellers", verifyToken, async (req, res) => {
       const result = await ordersCollection.find().toArray();
       res.send(result);
     });
@@ -170,7 +182,7 @@ const verifySeller = async(req,res,next)  =>{
       );
       res.send(result);
     });
-    app.get("/api/seller/:id",verifyToken, async (req, res) => {
+    app.get("/api/seller/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
 
       const result = await ordersCollection
@@ -203,7 +215,7 @@ const verifySeller = async(req,res,next)  =>{
       res.send(result);
     });
 
-    app.get("/api/overview",verifyToken,verifySeller, async (req, res) => {
+    app.get("/api/overview", verifyToken, async (req, res) => {
       const query = {};
 
       if (req.query.email) {
@@ -306,30 +318,31 @@ const verifySeller = async(req,res,next)  =>{
       res.send(result);
     });
 
-    app.get("/api/orders/:buyerEmail", verifyToken, verifyBuyer, async (req, res) => {
-      const { buyerEmail } = req.params;
+    app.get(
+      "/api/orders/:buyerEmail",
+      verifyToken,
+      verifyBuyer,
+      async (req, res) => {
+        const { buyerEmail } = req.params;
 
-      if(req.params){
-        req.params.email === buyerEmail
-      console.log('something');
+        if (req.params) {
+          req.params.email === buyerEmail;
+          console.log("something");
 
-      if(req.user.email !== buyerEmail){
-        return res.status(403).send({message:"forbidden access"})
-      }
-      
-      }
+          if (req.user.email !== buyerEmail) {
+            return res.status(403).send({ message: "forbidden access" });
+          }
+        }
 
-      
+        const result = await ordersCollection
+          .find({
+            "buyerInfo.email": buyerEmail,
+          })
+          .toArray();
 
-      const result = await ordersCollection.find({
-          "buyerInfo.email": buyerEmail,
-        })
-        .toArray();
-
-
-      
-      res.send(result);
-    });
+        res.send(result);
+      },
+    );
     app.post("/api/orders", verifyToken, async (req, res) => {
       const data = req.body;
       const orders = {
@@ -340,16 +353,21 @@ const verifySeller = async(req,res,next)  =>{
       res.send(result);
     });
 
-    app.delete("/api/products/:id",verifyToken,verifyAdmin, async (req, res) => {
-      const { id } = req.params;
-      const result = await productsCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
-      res.send(result);
-    });
+    app.delete(
+      "/api/products/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id } = req.params;
+        const result = await productsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      },
+    );
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
